@@ -50,18 +50,21 @@ public:
   PluginDerivedActionFactory(OwnedPtr<File> executable,
                              std::string&& verb,
                              bool silent,
-                             std::vector<Tag>&& triggers);
+                             std::vector<Tag>&& triggers,
+                             Priority priority);
   ~PluginDerivedActionFactory();
 
   // implements ActionFactory -----------------------------------------------------------
   void enumerateTriggerTags(std::back_insert_iterator<std::vector<Tag> > iter) override;
   OwnedPtr<Action> tryMakeAction(const Tag& id, File* file) override;
+  Priority getPriority() override { return priority; }
 
 private:
   OwnedPtr<File> executable;
   std::string verb;
   bool silent;
   std::vector<Tag> triggers;
+  Priority priority;
 };
 
 // =======================================================================================
@@ -146,6 +149,8 @@ private:
       silent = true;
     } else if (command == "trigger") {
       triggers.push_back(Tag::fromName(args));
+    } else if (command == "priority") {
+      priority = priorityFromName(args);
     } else if (command == "findProvider" || command == "findInput") {
       File* provider;
       if (command == "findProvider") {
@@ -286,7 +291,17 @@ private:
 
     // Also register new triggers.
     context->addActionType(newOwned<PluginDerivedActionFactory>(
-        executable.release(), std::move(verb), silent, std::move(triggers)));
+        executable.release(), std::move(verb), silent, std::move(triggers), priority));
+  }
+
+  Priority priorityFromName(const std::string priorityName) {
+    if (priorityName == "codegen") {
+      return Priority::CodeGen;
+    } else if (priorityName == "compilation") {
+      return Priority::Compilation;
+    }
+
+    return Priority::EverythingElse;
   }
 
 private:
@@ -300,6 +315,7 @@ private:
   std::string verb;
   bool silent;
   std::vector<Tag> triggers;
+  Priority priority = Priority::EverythingElse;
 
   OwnedPtrMap<std::string, File> knownFiles;
 
@@ -358,8 +374,9 @@ Promise<void> PluginDerivedAction::start(EventManager* eventManager, BuildContex
 PluginDerivedActionFactory::PluginDerivedActionFactory(OwnedPtr<File> executable,
                                                        std::string&& verb,
                                                        bool silent,
-                                                       std::vector<Tag>&& triggers)
-    : executable(executable.release()), silent(silent) {
+                                                       std::vector<Tag>&& triggers,
+                                                       Priority priority)
+    : executable(executable.release()), silent(silent), priority(priority) {
   this->verb.swap(verb);
   this->triggers.swap(triggers);
 }
@@ -391,4 +408,7 @@ OwnedPtr<Action> ExecPluginActionFactory::tryMakeAction(const Tag& id, File* fil
   return newOwned<PluginDerivedAction>(file, "learn", false, (File*)NULL);
 }
 
+Priority ExecPluginActionFactory::getPriority() {
+  return Priority::Rules;
+}
 }  // namespace ekam

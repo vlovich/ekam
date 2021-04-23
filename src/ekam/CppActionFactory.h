@@ -31,6 +31,7 @@ public:
   // implements ActionFactory ------------------------------------------------------------
   void enumerateTriggerTags(std::back_insert_iterator<std::vector<Tag> > iter) override;
   OwnedPtr<Action> tryMakeAction(const Tag& id, File* file) override;
+  Priority getPriority() override;
 
 private:
   static const Tag MAIN_SYMBOLS[];

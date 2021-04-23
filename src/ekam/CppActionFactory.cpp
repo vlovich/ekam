@@ -325,4 +325,9 @@ OwnedPtr<Action> CppActionFactory::tryMakeAction(const Tag& id, File* file) {
   return nullptr;
 }
 
+Priority CppActionFactory::getPriority() {
+  // TODO: How to detect HostLink?
+  return Priority::Link;
+}
+
 }  // namespace ekam

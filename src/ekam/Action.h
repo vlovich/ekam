@@ -38,6 +38,36 @@ public:
   virtual void done(int exit_status) = 0;
 };
 
+enum class Priority: uint8_t {
+  // Lower number indicates it should be evaluated first.
+  // So we want to learn all the rules first before we do anything else. Then we want to perform
+  // all the code gen actions (to avoid needlessly compiling files before the code gen has even
+  // taken place).
+  // NOTE: Since rules are run in parallel it's entirely possible we may end up evaluating
+  // out-of-order. That should be OK since the rest of Ekam is built to handle this without a
+  // problem. This priority should only reduce the overhead of Ekam, not impact correctness in any
+  // way. Only "CodeGen" and "Compilation" are available for ekam rules to specify dynamically.
+  // Everything else is marked automatically within Ekam.
+  // This is a *very* coarse heuristic intended to improve the 0-knowledge situation (first launch
+  // of Ekam). A more optimal optimization would be to dump the DAG that Ekam discovers during
+  // runtime so that subsequent invocations can make even more optimal use (e.g. it's not hard to
+  // conceive a scenario where a host compilation is needed to generate code that's used in
+  // another host compilation, ad infinitum, making this heuristic not as beneficial in such
+  // use-cases).
+  Rules = 0,
+  HostCompilation, // This is needed to build tools needed for codegen.
+  HostLink,
+  // As with Link below, this ensures we only try to link host binaries after everything is
+  // compiled.
+  CodeGen, // This is needed to generate code needed for compilation.
+  Compilation,
+  Link,
+  // No sense trying to link anything that we might be missing object files for. This does have an
+  // unfortunate side-effect that
+  EverythingElse, // Basically tests. Anything else?
+};
+static constexpr uint8_t NumPriorities = static_cast<uint8_t>(Priority::EverythingElse) + 1;
+
 class BuildContext {
 public:
   virtual ~BuildContext() noexcept(false);
@@ -81,6 +111,7 @@ public:
 
   virtual void enumerateTriggerTags(std::back_insert_iterator<std::vector<Tag> > iter) = 0;
   virtual OwnedPtr<Action> tryMakeAction(const Tag& id, File* file) = 0;
+  virtual Priority getPriority() = 0;
 };
 
 }  // namespace ekam

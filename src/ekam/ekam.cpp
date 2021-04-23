@@ -96,6 +96,7 @@ public:
   OwnedPtr<Action> tryMakeAction(const Tag& id, File* file) override {
     return newOwned<ExtractTypeAction>(file);
   }
+  Priority getPriority() override { return Priority::EverythingElse; }
 };
 
 void usage(const char* command, FILE* out) {
