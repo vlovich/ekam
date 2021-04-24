@@ -56,6 +56,19 @@ public:
 private:
   class ActionDriver;
 
+  class PrioritizedActions {
+  public:
+    bool empty() const;
+    OwnedPtr<ActionDriver> dequeueNextActionToRun();
+    void enqueueNewAction(OwnedPtr<ActionDriver> ptr);
+    void requeueActionForLater(OwnedPtr<ActionDriver> ptr);
+    void remove(const ActionDriver* actionToDelete);
+
+  private:
+    bool prioritized = true;
+    OwnedPtrDeque<ActionDriver> actions;
+  };
+
   EventManager* eventManager;
   Dashboard* dashboard;
 
@@ -90,7 +103,7 @@ private:
   TagTable tagTable;
 
   OwnedPtrVector<ActionDriver> activeActions;
-  OwnedPtrDeque<ActionDriver> pendingActions;
+  PrioritizedActions pendingActions;
   OwnedPtrMap<ActionDriver*, ActionDriver> completedActionPtrs;
 
   class DependencyTable : public Table<IndexedColumn<Tag, Tag::HashFunc>,

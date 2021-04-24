@@ -431,14 +431,7 @@ void Driver::ActionDriver::reset() {
 
   state = PENDING;
 
-  // Put on back of queue (as opposed to front) so that actions which are frequently reset
-  // don't get redundantly rebuilt too much.  We add the action to the queue before resetting
-  // dependents so that this action gets re-run before its dependents.
-  // TODO:  The second point probably doesn't help much when multiprocessing.  Maybe the
-  //   action queue should really be a graph that remembers what depended on what the last
-  //   time we ran them, and avoids re-running any action before re-running actions on which it
-  //   depended last time.
-  driver->pendingActions.pushBack(self.release());
+  driver->pendingActions.requeueActionForLater(self.release());
 
   // Reset dependents.
   for (int i = 0; i < provisions.size(); i++) {
@@ -458,16 +451,7 @@ void Driver::ActionDriver::reset() {
 
     for (size_t j = 0; j < actionsToDelete.size(); j++) {
       actionsToDelete[j]->reset();
-
-      // TODO:  Use better data structure for pendingActions.  For now we have to iterate
-      //   through the whole thing to find the action we're deleting.  We iterate from the back
-      //   since it's likely the action was just added there.
-      for (int k = driver->pendingActions.size() - 1; k >= 0; k--) {
-        if (driver->pendingActions.get(k) == actionsToDelete[j]) {
-          driver->pendingActions.releaseAndShift(k);
-          break;
-        }
-      }
+      driver->pendingActions.remove(actionsToDelete[j]);
     }
 
     driver->actionTriggersTable.erase<ActionTriggersTable::FACTORY>(factory);
@@ -615,7 +599,7 @@ void Driver::removeSourceFile(File* file) {
 void Driver::startSomeActions() {
   while (activeActions.size() < maxConcurrentActions && !pendingActions.empty()) {
     if (activityObserver != nullptr) activityObserver->startingAction();
-    OwnedPtr<ActionDriver> actionDriver = pendingActions.popFront();
+    OwnedPtr<ActionDriver> actionDriver = pendingActions.dequeueNextActionToRun();
     ActionDriver* ptr = actionDriver.get();
     activeActions.add(actionDriver.release());
     try {
@@ -661,7 +645,7 @@ void Driver::queueNewAction(ActionFactory* factory, OwnedPtr<Action> action,
 
   // Put new action on front of queue because it was probably triggered by another action that
   // just completed, and it's good to run related actions together to improve cache locality.
-  pendingActions.pushFront(actionDriver.release());
+  pendingActions.enqueueNewAction(actionDriver.release());
 }
 
 void Driver::getTransitiveDependencies(
@@ -762,16 +746,7 @@ void Driver::resetDependentActions(Provision* provision) {
 
     for (size_t j = 0; j < actionsToDelete.size(); j++) {
       actionsToDelete[j]->reset();
-
-      // TODO:  Use better data structure for pendingActions.  For now we have to iterate
-      //   through the whole thing to find the action we're deleting.  We iterate from the back
-      //   since it's likely the action was just added there.
-      for (int k = pendingActions.size() - 1; k >= 0; k--) {
-        if (pendingActions.get(k) == actionsToDelete[j]) {
-          pendingActions.releaseAndShift(k);
-          break;
-        }
-      }
+      pendingActions.remove(actionsToDelete[j]);
     }
 
     actionTriggersTable.erase<ActionTriggersTable::PROVISION>(provision);
@@ -799,6 +774,41 @@ bool Driver::dumpErrors() {
     }
   }
   return hasFailures;
+}
+
+bool Driver::PrioritizedActions::empty() const {
+  return actions.empty();
+}
+
+OwnedPtr<Driver::ActionDriver> Driver::PrioritizedActions::dequeueNextActionToRun() {
+  return actions.popFront();
+}
+
+void Driver::PrioritizedActions::enqueueNewAction(OwnedPtr<ActionDriver> ptr) {
+  actions.pushFront(ptr.release());
+}
+
+void Driver::PrioritizedActions::requeueActionForLater(OwnedPtr<ActionDriver> ptr) {
+  // Put on back of queue (as opposed to front) so that actions which are frequently reset
+  // don't get redundantly rebuilt too much.  We add the action to the queue before resetting
+  // dependents so that this action gets re-run before its dependents.
+  // TODO:  The second point probably doesn't help much when multiprocessing.  Maybe the
+  //   action queue should really be a graph that remembers what depended on what the last
+  //   time we ran them, and avoids re-running any action before re-running actions on which it
+  //   depended last time.
+  actions.pushBack(ptr.release());
+}
+
+void Driver::PrioritizedActions::remove(const ActionDriver* actionToDelete) {
+  // TODO:  Use better data structure for actions.  For now we have to iterate
+  //   through the whole thing to find the action we're deleting.  We iterate from the back
+  //   since it's likely the action was just added there.
+  for (int k = actions.size() - 1; k >= 0; k--) {
+    if (actions.get(k) == actionToDelete) {
+      actions.releaseAndShift(k);
+      return;
+    }
+  }
 }
 
 }  // namespace ekam
