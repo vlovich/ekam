@@ -20,7 +20,7 @@
 # You may override the following vars on the command line to suit
 # your config.
 CXX=g++
-CXXFLAGS=-O2 -Wall
+CXXFLAGS=-O2 -Wall -march=native
 PARALLEL=$(shell nproc)
 
 define color
@@ -50,14 +50,13 @@ OBJ_DIR := tmp
 OBJECTS=$(addprefix $(OBJ_DIR)/, $(SOURCES:.cpp=.o))
 
 $(OBJ_DIR)/%.o: src/%.cpp $(HEADERS)
-	@echo $(HEADERS)
 	@mkdir -p $(@D)
-	$(CXX) -Isrc -fPIC -std=c++14 -pthread -o $@ -c $<
+	$(CXX) -Isrc -fPIC -std=c++14 -pthread $(CXXFLAGS) -o $@ -c $<
 
 bin/ekam-bootstrap: $(OBJECTS)
 	$(call color,compiling bootstrap ekam)
 	@mkdir -p bin
-	$(CXX) -Isrc -std=c++14 -pthread $(OBJECTS) -o $@
+	$(CXX) -Isrc -std=c++14 -pthread $(CXXFLAGS) $(OBJECTS) -o $@
 
 clean:
 	rm -rf bin lib tmp $(OBJ_DIR)
