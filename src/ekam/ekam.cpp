@@ -570,6 +570,7 @@ int main(int argc, char* argv[]) {
   } else {
     scanSourceTree(&src, &driver);
   }
+  driver.finishedInitialTreeWalk();
   eventManager->loop();
 
   // For debugging purposes, check for zombie processes.

@@ -565,6 +565,16 @@ void Driver::addActionFactory(ActionFactory* factory) {
   }
 }
 
+void Driver::finishedInitialTreeWalk() {
+  // This should only be invoked once at the start of the program.
+  assert(!initialTreeWalkComplete);
+
+  initialTreeWalkComplete = true;
+
+  // Now do the "startSomeActions" call that we've postponed.
+  startSomeActions();
+}
+
 void Driver::addSourceFile(File* file) {
   OwnedPtr<Provision> provision;
   if (rootProvisions.release(file, &provision)) {
@@ -583,7 +593,11 @@ void Driver::addSourceFile(File* file) {
   File* key = provision->file.get();  // cannot inline due to undefined evaluation order
   rootProvisions.add(key, provision.release());
 
-  startSomeActions();
+  if (initialTreeWalkComplete) {
+    // We added a source file after we've already started so there's no need to wait triggering any
+    // appropriate actions.
+    startSomeActions();
+  }
 }
 
 void Driver::removeSourceFile(File* file) {

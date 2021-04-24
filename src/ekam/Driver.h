@@ -46,6 +46,10 @@ public:
 
   void addActionFactory(ActionFactory* factory);
 
+  void finishedInitialTreeWalk();
+  // We keep actions plugged up until we're finished our initial walk of the tree. This ensures
+  // we have a full view of the tree before we start taking any actions.
+
   void addSourceFile(File* file);
   void removeSourceFile(File* file);
 
@@ -61,6 +65,8 @@ private:
   int maxConcurrentActions;
 
   ActivityObserver* activityObserver;
+
+  bool initialTreeWalkComplete = false;
 
   class TriggerTable : public Table<IndexedColumn<Tag, Tag::HashFunc>,
                                     IndexedColumn<ActionFactory*> > {
