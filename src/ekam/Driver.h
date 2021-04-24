@@ -58,6 +58,9 @@ private:
 
   class PrioritizedActions {
   public:
+    void prioritizeProvider(Tag provider, Priority priority);
+    void prioritizeFiles(const UnownedFileSet& files, Priority priority);
+
     bool empty() const;
     OwnedPtr<ActionDriver> dequeueNextActionToRun();
     void enqueueNewAction(OwnedPtr<ActionDriver> ptr);
@@ -66,7 +69,8 @@ private:
 
   private:
     bool prioritized = true;
-    OwnedPtrDeque<ActionDriver> actions;
+    std::array<OwnedPtrDeque<ActionDriver>, NumPriorities> enqueued;
+    std::array<OwnedPtrDeque<ActionDriver>, NumPriorities> requeued;
   };
 
   EventManager* eventManager;

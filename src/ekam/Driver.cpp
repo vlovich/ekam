@@ -23,6 +23,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "Action.h"
 #include "base/Debug.h"
 #include "os/EventGroup.h"
 
@@ -55,8 +56,12 @@ int commonPrefixLength(const std::string& srcName, const std::string& bestMatchN
 class Driver::ActionDriver final : public BuildContext, public EventGroup::ExceptionHandler {
 public:
   ActionDriver(Driver* driver, OwnedPtr<Action> action,
-               File* srcfile, Hash srcHash, OwnedPtr<Dashboard::Task> task);
+               File* srcfile, Hash srcHash, OwnedPtr<Dashboard::Task> task, Priority priority);
   ~ActionDriver();
+
+  Priority getPriority() const;
+  bool changePriority(Priority newPriority);
+  // Return true if the new priority is lower than the priority we currently have.
 
   void start();
 
@@ -64,6 +69,8 @@ public:
   File* findProvider(Tag id) override;
   File* findInput(const std::string& path) override;
 
+  void prioritizeProvider(Tag tag, const UnownedFileSet& providerSources, Priority priority)
+      override;
   void provide(File* file, const std::vector<Tag>& tags) override;
   void install(File* file, InstallLocation location, const std::string& name) override;
   void log(const std::string& text) override;
@@ -102,6 +109,8 @@ private:
 
   Promise<void> asyncCallbackOp;
 
+  Priority priority;
+
   bool isRunning;
   Promise<void> runningAction;
 
@@ -122,7 +131,8 @@ private:
   // debugging.
   bool currentlyExecutingReturned = false;
 
-  void ensureRunning();
+  void ensureRunning() const;
+  void ensureNotRunning() const;
   void queueDoneCallback();
   void returned();
   void reset();
@@ -134,12 +144,29 @@ private:
 
 Driver::ActionDriver::ActionDriver(Driver* driver, OwnedPtr<Action> action,
                                    File* srcfile, Hash srcHash,
-                                   OwnedPtr<Dashboard::Task> task)
+                                   OwnedPtr<Dashboard::Task> task,
+                                   Priority initialPriority)
     : driver(driver), action(action.release()), srcfile(srcfile->clone()), srcHash(srcHash),
       dashboardTask(task.release()), state(PENDING), eventGroup(driver->eventManager, this),
-      isRunning(false) {}
+      priority(initialPriority), isRunning(false) {}
+
 Driver::ActionDriver::~ActionDriver() {
   assert(!currentlyExecutingReturned);
+}
+
+Priority Driver::ActionDriver::getPriority() const {
+  ensureNotRunning();
+  return priority;
+}
+
+bool Driver::ActionDriver::changePriority(Priority newPriority) {
+  ensureNotRunning();
+  if (newPriority >= priority) {
+    return false;
+  }
+
+  priority = newPriority;
+  return true;
 }
 
 void Driver::ActionDriver::start() {
@@ -180,6 +207,17 @@ File* Driver::ActionDriver::findInput(const std::string& path) {
   ensureRunning();
 
   return findProvider(Tag::fromFile(path));
+}
+
+void Driver::ActionDriver::prioritizeProvider(
+    Tag providerTag, const UnownedFileSet& providerSources, Priority sourcePriority) {
+  assert(sourcePriority == Priority::HostCompilation);
+  auto providerPriority = Priority::HostLink;
+
+  ensureRunning();
+
+  // pendingActions.prioritizeProvider(providerTag, providerPriority);
+  driver->pendingActions.prioritizeFiles(providerSources, sourcePriority);
 }
 
 void Driver::ActionDriver::provide(File* file, const std::vector<Tag>& tags) {
@@ -292,9 +330,15 @@ void Driver::ActionDriver::failed() {
   }
 }
 
-void Driver::ActionDriver::ensureRunning() {
+void Driver::ActionDriver::ensureRunning() const {
   if (!isRunning) {
     throw std::runtime_error("Action is not running.");
+  }
+}
+
+void Driver::ActionDriver::ensureNotRunning() const {
+  if (isRunning) {
+    throw std::runtime_error("Action is running.");
   }
 }
 
@@ -640,7 +684,7 @@ void Driver::queueNewAction(ActionFactory* factory, OwnedPtr<Action> action,
 
   OwnedPtr<ActionDriver> actionDriver =
       newOwned<ActionDriver>(this, action.release(), provision->file.get(), provision->contentHash,
-                             task.release());
+                             task.release(), factory->getPriority());
   actionTriggersTable.add(factory, provision, actionDriver.get());
 
   // Put new action on front of queue because it was probably triggered by another action that
@@ -777,15 +821,64 @@ bool Driver::dumpErrors() {
 }
 
 bool Driver::PrioritizedActions::empty() const {
-  return actions.empty();
+  for (const auto& prioritizedQueues : {std::cref(enqueued), std::cref(requeued)}) {
+    for (uint8_t priority = 0; priority < NumPriorities; priority++) {
+      const OwnedPtrDeque<ActionDriver>& queue = prioritizedQueues.get()[priority];
+      if (!queue.empty()) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+void Driver::PrioritizedActions::prioritizeFiles(
+    const UnownedFileSet& files, Priority newPriority) {
+  for (auto prioritizedQueuesRef : {std::ref(enqueued), std::ref(requeued)}) {
+    auto& prioritizedQueues = prioritizedQueuesRef.get();
+    for (uint8_t priority = 0; priority < NumPriorities; priority++) {
+      if (priority == static_cast<uint8_t>(newPriority)) {
+        // All actions here will have this priority.
+        continue;
+      }
+
+      OwnedPtrDeque<ActionDriver>& oldQueue = prioritizedQueues[priority];
+      OwnedPtrDeque<ActionDriver>& newQueue = prioritizedQueues[static_cast<uint8_t>(newPriority)];
+      for (int i = 0; i < oldQueue.size(); i++) {
+        ActionDriver* action = oldQueue.get(i);
+        if (files.count(action->srcfile.get()) && action->changePriority(newPriority)) {
+          newQueue.pushFront(oldQueue.releaseAndShift(i));
+          i -= 1;
+        }
+      }
+    }
+  }
 }
 
 OwnedPtr<Driver::ActionDriver> Driver::PrioritizedActions::dequeueNextActionToRun() {
-  return actions.popFront();
+  // Due to prioritization we now maintain two stacks. The reason is that the old trick of enqueuing
+  // to the back wouldn't be as robust & could be subject to infinite loops. Even if the user didn't
+  // make any mistakes in their build, it's not inconceivable that a host tool build somehow relied
+  // on codegen. However, if the host tool build kept failing, we'd never get to any code gen steps.
+  // This split ensures that we can always make forward progress. Once enqueued is empty, we replace
+  // it with requeued. Prioritization is purely an attempt to improve the performance & should have
+  // no impact on the processing Ekam actually does.
+  for (uint8_t priority = 0; priority < NumPriorities; priority++) {
+    if (!enqueued[priority].empty()) {
+      return enqueued[priority].popFront();
+    }
+  }
+  for (uint8_t priority = 0; priority < NumPriorities; priority++) {
+    enqueued[priority].swap(&requeued[priority]);
+  }
+  // Infinite loop only possible if attempting to dequeue on an empty list of actions which is
+  // a violation of the precondition of the API.
+  return dequeueNextActionToRun();
 }
 
 void Driver::PrioritizedActions::enqueueNewAction(OwnedPtr<ActionDriver> ptr) {
-  actions.pushFront(ptr.release());
+  Priority priority = ptr->getPriority();
+  enqueued[static_cast<uint8_t>(priority)].pushFront(ptr.release());
 }
 
 void Driver::PrioritizedActions::requeueActionForLater(OwnedPtr<ActionDriver> ptr) {
@@ -796,17 +889,24 @@ void Driver::PrioritizedActions::requeueActionForLater(OwnedPtr<ActionDriver> pt
   //   action queue should really be a graph that remembers what depended on what the last
   //   time we ran them, and avoids re-running any action before re-running actions on which it
   //   depended last time.
-  actions.pushBack(ptr.release());
+  Priority priority = ptr->getPriority();
+  requeued[static_cast<uint8_t>(priority)].pushBack(ptr.release());
 }
 
 void Driver::PrioritizedActions::remove(const ActionDriver* actionToDelete) {
   // TODO:  Use better data structure for actions.  For now we have to iterate
   //   through the whole thing to find the action we're deleting.  We iterate from the back
   //   since it's likely the action was just added there.
-  for (int k = actions.size() - 1; k >= 0; k--) {
-    if (actions.get(k) == actionToDelete) {
-      actions.releaseAndShift(k);
-      return;
+  for (auto prioritizedQueuesRef : {std::ref(enqueued), std::ref(requeued)}) {
+    auto& prioritizedQueues = prioritizedQueuesRef.get();
+    for (uint8_t priority = 0; priority < NumPriorities; priority++) {
+      OwnedPtrDeque<ActionDriver>& queue = prioritizedQueues[priority];
+      for (int k = queue.size() - 1; k >= 0; k--) {
+        if (queue.get(k) == actionToDelete) {
+          queue.releaseAndShift(k);
+          return;
+        }
+      }
     }
   }
 }

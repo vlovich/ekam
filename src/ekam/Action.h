@@ -19,6 +19,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_set>
 #include <sys/types.h>
 
 #include "base/OwnedPtr.h"
@@ -68,6 +69,8 @@ enum class Priority: uint8_t {
 };
 static constexpr uint8_t NumPriorities = static_cast<uint8_t>(Priority::EverythingElse) + 1;
 
+using UnownedFileSet = std::unordered_set<File*, File::HashFunc, File::EqualFunc>;
+
 class BuildContext {
 public:
   virtual ~BuildContext() noexcept(false);
@@ -84,6 +87,8 @@ public:
 
   static const char* const INSTALL_LOCATION_NAMES[INSTALL_LOCATION_COUNT];
 
+  virtual void prioritizeProvider(Tag tag, const UnownedFileSet& providerSources, Priority priority)
+      = 0;
   virtual void provide(File* file, const std::vector<Tag>& tags) = 0;
   virtual void install(File* file, InstallLocation location, const std::string& name) = 0;
   virtual void log(const std::string& text) = 0;

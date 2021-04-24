@@ -151,6 +151,34 @@ private:
       triggers.push_back(Tag::fromName(args));
     } else if (command == "priority") {
       priority = priorityFromName(args);
+    } else if (command == "prioritizeProvider") {
+      auto priority = splitToken(&args);
+      auto providerName = splitToken(&args);
+      auto provider = Tag::fromName(providerName);
+      UnownedFileSet sourcesForProvider;
+      if (args.empty()) {
+        context->log("cannot prioritize provider without a list of sources that go into it");
+        context->failed();
+        return;
+      }
+
+      while (!args.empty()) {
+        auto sourcePath = splitToken(&args);
+        auto file = context->findInput(sourcePath);
+        if (file == nullptr) {
+          context->log("No such input " + sourcePath + " to prioritize for " + providerName);
+          context->failed();
+          return;
+        }
+        sourcesForProvider.emplace(file);
+      }
+      if (priority == "host") {
+        context->prioritizeProvider(provider, sourcesForProvider, Priority::HostCompilation);
+      } else {
+        context->log("invalid priority " + priority + " for provider " + providerName);
+        context->failed();
+        return;
+      }
     } else if (command == "findProvider" || command == "findInput") {
       File* provider;
       if (command == "findProvider") {
