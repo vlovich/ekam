@@ -52,7 +52,7 @@ int commonPrefixLength(const std::string& srcName, const std::string& bestMatchN
 
 }  // namespace
 
-class Driver::ActionDriver : public BuildContext, public EventGroup::ExceptionHandler {
+class Driver::ActionDriver final : public BuildContext, public EventGroup::ExceptionHandler {
 public:
   ActionDriver(Driver* driver, OwnedPtr<Action> action,
                File* srcfile, Hash srcHash, OwnedPtr<Dashboard::Task> task);
@@ -61,24 +61,24 @@ public:
   void start();
 
   // implements BuildContext -------------------------------------------------------------
-  File* findProvider(Tag id);
-  File* findInput(const std::string& path);
+  File* findProvider(Tag id) override;
+  File* findInput(const std::string& path) override;
 
-  void provide(File* file, const std::vector<Tag>& tags);
-  void install(File* file, InstallLocation location, const std::string& name);
-  void log(const std::string& text);
+  void provide(File* file, const std::vector<Tag>& tags) override;
+  void install(File* file, InstallLocation location, const std::string& name) override;
+  void log(const std::string& text) override;
 
-  OwnedPtr<File> newOutput(const std::string& path);
+  OwnedPtr<File> newOutput(const std::string& path) override;
 
-  void addActionType(OwnedPtr<ActionFactory> factory);
+  void addActionType(OwnedPtr<ActionFactory> factory) override;
 
-  void passed();
-  void failed();
+  void passed() override;
+  void failed() override;
 
   // implements ExceptionHandler ---------------------------------------------------------
-  void threwException(const std::exception& e);
-  void threwUnknownException();
-  void noMoreEvents();
+  void threwException(const std::exception& e) override;
+  void threwUnknownException() override;
+  void noMoreEvents() override;
 
 private:
   Driver* driver;

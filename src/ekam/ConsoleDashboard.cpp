@@ -173,15 +173,15 @@ private:
   }
 };
 
-class ConsoleDashboard::TaskImpl : public Dashboard::Task {
+class ConsoleDashboard::TaskImpl final : public Dashboard::Task {
 public:
   TaskImpl(ConsoleDashboard* dashboard, const std::string& verb,
            const std::string& noun, Silence silence);
   ~TaskImpl();
 
   // implements Task ---------------------------------------------------------------------
-  void setState(TaskState state);
-  void addOutput(const std::string& text);
+  void setState(TaskState state) override;
+  void addOutput(const std::string& text) override;
 
 private:
   ConsoleDashboard* dashboard;

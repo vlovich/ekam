@@ -40,16 +40,16 @@
 
 namespace ekam {
 
-class ExtractTypeAction : public Action {
+class ExtractTypeAction final : public Action {
 public:
   ExtractTypeAction(File* file) : file(file->clone()) {}
   ~ExtractTypeAction() {}
 
   // implements Action -------------------------------------------------------------------
-  bool isSilent() { return true; }
-  std::string getVerb() { return "scan"; }
+  bool isSilent() override { return true; }
+  std::string getVerb() override { return "scan"; }
 
-  Promise<void> start(EventManager* eventManager, BuildContext* context) {
+  Promise<void> start(EventManager* eventManager, BuildContext* context) override {
     std::vector<Tag> tags;
 
     std::string name = file->canonicalName();
@@ -84,16 +84,16 @@ private:
   OwnedPtr<File> file;
 };
 
-class ExtractTypeActionFactory : public ActionFactory {
+class ExtractTypeActionFactory final : public ActionFactory {
 public:
   ExtractTypeActionFactory() {}
   ~ExtractTypeActionFactory() {}
 
   // implements ActionFactory ------------------------------------------------------------
-  void enumerateTriggerTags(std::back_insert_iterator<std::vector<Tag> > iter) {
+  void enumerateTriggerTags(std::back_insert_iterator<std::vector<Tag> > iter) override {
     *iter++ = Tag::DEFAULT_TAG;
   }
-  OwnedPtr<Action> tryMakeAction(const Tag& id, File* file) {
+  OwnedPtr<Action> tryMakeAction(const Tag& id, File* file) override {
     return newOwned<ExtractTypeAction>(file);
   }
 };
@@ -183,23 +183,23 @@ private:
   Promise<void> asyncOp;
 };
 
-class FileWatcher : public Watcher {
+class FileWatcher final : public Watcher {
 public:
   FileWatcher(OwnedPtr<File> file, EventManager* eventManager, Driver* driver)
       : Watcher(file.release(), eventManager, driver, false) {}
   ~FileWatcher() {}
 
   // implements FileChangeCallback -------------------------------------------------------
-  void created() {
+  void created() override {
     DEBUG_INFO << "Source file created: " << file->canonicalName();
     modified();
   }
-  void modified() {
+  void modified() override {
     DEBUG_INFO << "Source file modified: " << file->canonicalName();
 
     driver->addSourceFile(file.get());
   }
-  void deleted() {
+  void deleted() override {
     if (file->isFile()) {
       // A new file was created in place of the old.  Reset the watch.
       DEBUG_INFO << "Source file replaced: " << file->canonicalName();
@@ -211,7 +211,7 @@ public:
   }
 
   // implements Watcher ------------------------------------------------------------------
-  void reallyDeleted() {
+  void reallyDeleted() override {
     DEBUG_INFO << "Source file deleted: " << file->canonicalName();
 
     clearWatch();
@@ -219,7 +219,7 @@ public:
   }
 };
 
-class DirectoryWatcher : public Watcher {
+class DirectoryWatcher final : public Watcher {
   typedef OwnedPtrMap<File*, Watcher, File::HashFunc, File::EqualFunc> ChildMap;
 public:
   DirectoryWatcher(OwnedPtr<File> file, EventManager* eventManager, Driver* driver)
@@ -227,11 +227,11 @@ public:
   ~DirectoryWatcher() {}
 
   // implements FileChangeCallback -------------------------------------------------------
-  void created() {
+  void created() override {
     driver->addSourceFile(file.get());
     modified();
   }
-  void modified() {
+  void modified() override {
     DEBUG_INFO << "Directory modified: " << file->canonicalName();
 
     OwnedPtrVector<File> list;
@@ -300,7 +300,7 @@ public:
     children.swap(&newChildren);
   }
 
-  void deleted() {
+  void deleted() override {
     if (file->isDirectory()) {
       // A new directory was created in place of the old.  Reset the watch.
       DEBUG_INFO << "Directory replaced: " << file->canonicalName();
@@ -312,7 +312,7 @@ public:
   }
 
   // implements Watcher ------------------------------------------------------------------
-  void reallyDeleted() {
+  void reallyDeleted() override {
     DEBUG_INFO << "Directory deleted: " << file->canonicalName();
 
     clearWatch();

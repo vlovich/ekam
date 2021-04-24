@@ -48,7 +48,7 @@ bool isTestName(const std::string& name) {
 
 }  // namespace
 
-class LinkAction : public Action {
+class LinkAction final : public Action {
 public:
   enum Mode {
     NORMAL,
@@ -61,8 +61,8 @@ public:
   ~LinkAction();
 
   // implements Action -------------------------------------------------------------------
-  std::string getVerb();
-  Promise<void> start(EventManager* eventManager, BuildContext* context);
+  std::string getVerb() override;
+  Promise<void> start(EventManager* eventManager, BuildContext* context) override;
 
 private:
   class DepsSet {

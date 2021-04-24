@@ -30,20 +30,20 @@ typedef struct pollfd PollFd;
 
 namespace ekam {
 
-class PollEventManager : public RunnableEventManager {
+class PollEventManager final : public RunnableEventManager {
 public:
   PollEventManager();
   ~PollEventManager();
 
   // implements RunnableEventManager -----------------------------------------------------
-  void loop();
+  void loop() override;
 
   // implements EventManager -------------------------------------------------------------
-  OwnedPtr<AsyncOperation> runAsynchronously(Callback* callback);
-  OwnedPtr<AsyncOperation> onProcessExit(pid_t pid, ProcessExitCallback* callback);
-  OwnedPtr<AsyncOperation> onReadable(int fd, IoCallback* callback);
-  OwnedPtr<AsyncOperation> onWritable(int fd, IoCallback* callback);
-  OwnedPtr<AsyncOperation> onFileChange(const std::string& filename, FileChangeCallback* callback);
+  OwnedPtr<AsyncOperation> runAsynchronously(Callback* callback) override;
+  OwnedPtr<AsyncOperation> onProcessExit(pid_t pid, ProcessExitCallback* callback) override;
+  OwnedPtr<AsyncOperation> onReadable(int fd, IoCallback* callback) override;
+  OwnedPtr<AsyncOperation> onWritable(int fd, IoCallback* callback) override;
+  OwnedPtr<AsyncOperation> onFileChange(const std::string& filename, FileChangeCallback* callback) override;
 
 private:
   class IoHandler;

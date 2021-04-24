@@ -152,13 +152,13 @@ size_t DiskFile::identityHash() {
   return std::hash<std::string>()(path);
 }
 
-class DiskFile::DiskRefImpl : public File::DiskRef {
+class DiskFile::DiskRefImpl final : public File::DiskRef {
 public:
   DiskRefImpl(const std::string& path) : pathName(path) {}
   ~DiskRefImpl() {}
 
   // implements DiskRef ------------------------------------------------------------------
-  virtual const std::string& path() { return pathName; }
+  virtual const std::string& path() override { return pathName; }
 
 private:
   std::string pathName;

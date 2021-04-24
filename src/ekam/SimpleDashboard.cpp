@@ -18,14 +18,14 @@
 
 namespace ekam {
 
-class SimpleDashboard::TaskImpl : public Dashboard::Task {
+class SimpleDashboard::TaskImpl final : public Dashboard::Task {
 public:
   TaskImpl(const std::string& verb, const std::string& noun, Silence silence, FILE* outputStream);
   ~TaskImpl();
 
   // implements Task ---------------------------------------------------------------------
-  void setState(TaskState state);
-  void addOutput(const std::string& text);
+  void setState(TaskState state) override;
+  void addOutput(const std::string& text) override;
 
 private:
   TaskState state;

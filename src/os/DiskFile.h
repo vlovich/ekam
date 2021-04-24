@@ -22,41 +22,41 @@
 
 namespace ekam {
 
-class DiskFile: public File {
+class DiskFile final: public File {
 public:
   DiskFile(const std::string& path, File* parent);
   ~DiskFile();
 
   // implements File ---------------------------------------------------------------------
-  std::string basename();
-  std::string canonicalName();
-  OwnedPtr<File> clone();
-  bool hasParent();
-  OwnedPtr<File> parent();
+  std::string basename() override;
+  std::string canonicalName() override;
+  OwnedPtr<File> clone() override;
+  bool hasParent() override;
+  OwnedPtr<File> parent() override;
 
-  bool equals(File* other);
-  size_t identityHash();
+  bool equals(File* other) override;
+  size_t identityHash() override;
 
-  OwnedPtr<DiskRef> getOnDisk(Usage usage);
+  OwnedPtr<DiskRef> getOnDisk(Usage usage) override;
 
-  bool exists();
-  bool isFile();
-  bool isDirectory();
+  bool exists() override;
+  bool isFile() override;
+  bool isDirectory() override;
 
   // File only.
-  Hash contentHash();
-  std::string readAll();
-  void writeAll(const std::string& content);
-  void writeAll(const void* data, int size);
+  Hash contentHash() override;
+  std::string readAll() override;
+  void writeAll(const std::string& content) override;
+  void writeAll(const void* data, int size) override;
 
   // Directory only.
-  void list(OwnedPtrVector<File>::Appender output);
-  OwnedPtr<File> relative(const std::string& path);
+  void list(OwnedPtrVector<File>::Appender output) override;
+  OwnedPtr<File> relative(const std::string& path) override;
 
   // Methods that create or delete objects.
-  void createDirectory();
-  void link(File* target);
-  void unlink();
+  void createDirectory() override;
+  void link(File* target) override;
+  void unlink() override;
 
 private:
   class DiskRefImpl;

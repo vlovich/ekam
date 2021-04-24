@@ -48,14 +48,14 @@ private:
     group->exceptionHandler->threwUnknownException();            \
   }
 
-class EventGroup::RunnableWrapper : public Runnable {
+class EventGroup::RunnableWrapper final : public Runnable {
 public:
   RunnableWrapper(EventGroup* group, OwnedPtr<Runnable> wrapped)
       : group(group), pendingEvent(group), wrapped(wrapped.release()) {}
   ~RunnableWrapper() {}
 
   // implements Runnable -----------------------------------------------------------------
-  void run() { HANDLE_EXCEPTIONS(wrapped->run()); }
+  void run() override { HANDLE_EXCEPTIONS(wrapped->run()); }
 
 private:
   EventGroup* group;
@@ -85,21 +85,21 @@ Promise<ProcessExitCode> EventGroup::onProcessExit(pid_t pid) {
     });
 }
 
-class EventGroup::IoWatcherWrapper: public EventManager::IoWatcher {
+class EventGroup::IoWatcherWrapper final: public EventManager::IoWatcher {
 public:
   IoWatcherWrapper(EventGroup* group, OwnedPtr<IoWatcher> inner)
       : group(group), inner(inner.release()) {}
   ~IoWatcherWrapper() {}
 
   // implements IoWatcher ----------------------------------------------------------------
-  Promise<void> onReadable() {
+  Promise<void> onReadable() override {
     Promise<void> innerPromise = inner->onReadable();
     return group->when(innerPromise, group->newPendingEvent())(
       [](Void, OwnedPtr<PendingEvent>) {
         // Let PendingEvent die.
       });
   }
-  Promise<void> onWritable() {
+  Promise<void> onWritable() override {
     Promise<void> innerPromise = inner->onWritable();
     return group->when(innerPromise, group->newPendingEvent())(
       [](Void, OwnedPtr<PendingEvent>) {
@@ -116,14 +116,14 @@ OwnedPtr<EventManager::IoWatcher> EventGroup::watchFd(int fd) {
   return newOwned<IoWatcherWrapper>(this, inner->watchFd(fd));
 }
 
-class EventGroup::FileWatcherWrapper: public EventManager::FileWatcher {
+class EventGroup::FileWatcherWrapper final: public EventManager::FileWatcher {
 public:
   FileWatcherWrapper(EventGroup* group, OwnedPtr<FileWatcher> inner)
       : group(group), inner(inner.release()) {}
   ~FileWatcherWrapper() {}
 
   // implements IoWatcher ----------------------------------------------------------------
-  Promise<FileChangeType> onChange() {
+  Promise<FileChangeType> onChange() override {
     Promise<FileChangeType> innerPromise = inner->onChange();
     return group->when(innerPromise, group->newPendingEvent())(
       [](FileChangeType changeType, OwnedPtr<PendingEvent>) -> FileChangeType {

@@ -23,14 +23,14 @@
 
 namespace ekam {
 
-class CppActionFactory: public ActionFactory {
+class CppActionFactory final: public ActionFactory {
 public:
   CppActionFactory();
   ~CppActionFactory();
 
   // implements ActionFactory ------------------------------------------------------------
-  void enumerateTriggerTags(std::back_insert_iterator<std::vector<Tag> > iter);
-  OwnedPtr<Action> tryMakeAction(const Tag& id, File* file);
+  void enumerateTriggerTags(std::back_insert_iterator<std::vector<Tag> > iter) override;
+  OwnedPtr<Action> tryMakeAction(const Tag& id, File* file) override;
 
 private:
   static const Tag MAIN_SYMBOLS[];

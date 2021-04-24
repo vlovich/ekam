@@ -28,15 +28,15 @@
 
 namespace ekam {
 
-class ProtoDashboard::TaskImpl : public Dashboard::Task {
+class ProtoDashboard::TaskImpl final : public Dashboard::Task {
 public:
   TaskImpl(int id, const std::string& verb, const std::string& noun,
            Silence silence, WriteBuffer* output);
   ~TaskImpl();
 
   // implements Task ---------------------------------------------------------------------
-  void setState(TaskState state);
-  void addOutput(const std::string& text);
+  void setState(TaskState state) override;
+  void addOutput(const std::string& text) override;
 
 private:
   int id;
@@ -184,7 +184,7 @@ Promise<void> ProtoDashboard::WriteBuffer::onDisconnect() {
 
 // =======================================================================================
 
-class NetworkAcceptingDashboard : public Dashboard {
+class NetworkAcceptingDashboard final : public Dashboard {
 public:
   NetworkAcceptingDashboard(EventManager* eventManager, const std::string& address,
                             OwnedPtr<Dashboard> baseDashboard)
@@ -206,7 +206,7 @@ public:
   void accepted(OwnedPtr<ByteStream> stream);
 
   // implements Dashboard ----------------------------------------------------------------
-  OwnedPtr<Task> beginTask(const std::string& verb, const std::string& noun, Silence silence) {
+  OwnedPtr<Task> beginTask(const std::string& verb, const std::string& noun, Silence silence) override {
     return mux.beginTask(verb, noun, silence);
   }
 

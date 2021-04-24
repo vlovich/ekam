@@ -22,7 +22,7 @@
 
 namespace ekam {
 
-class MuxDashboard::TaskImpl : public Dashboard::Task {
+class MuxDashboard::TaskImpl final : public Dashboard::Task {
 public:
   TaskImpl(MuxDashboard* mux, const std::string& verb, const std::string& noun, Silence silence);
   ~TaskImpl();
@@ -31,8 +31,8 @@ public:
   void detach(Dashboard* dashboard);
 
   // implements Task ---------------------------------------------------------------------
-  void setState(TaskState state);
-  void addOutput(const std::string& text);
+  void setState(TaskState state) override;
+  void addOutput(const std::string& text) override;
 
 private:
   MuxDashboard* mux;

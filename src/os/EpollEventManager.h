@@ -34,21 +34,21 @@ typedef struct pollfd PollFd;
 
 namespace ekam {
 
-class EpollEventManager : public RunnableEventManager {
+class EpollEventManager final: public RunnableEventManager {
 public:
   EpollEventManager();
   ~EpollEventManager();
 
   // implements RunnableEventManager -----------------------------------------------------
-  void loop();
+  void loop() override;
 
   // implements Executor -----------------------------------------------------------------
-  OwnedPtr<PendingRunnable> runLater(OwnedPtr<Runnable> runnable);
+  OwnedPtr<PendingRunnable> runLater(OwnedPtr<Runnable> runnable) override;
 
   // implements EventManager -------------------------------------------------------------
-  Promise<ProcessExitCode> onProcessExit(pid_t pid);
-  OwnedPtr<IoWatcher> watchFd(int fd);
-  OwnedPtr<FileWatcher> watchFile(const std::string& filename);
+  Promise<ProcessExitCode> onProcessExit(pid_t pid) override;
+  OwnedPtr<IoWatcher> watchFd(int fd) override;
+  OwnedPtr<FileWatcher> watchFile(const std::string& filename) override;
 
 private:
   class AsyncCallbackHandler;
@@ -98,7 +98,7 @@ private:
     std::unordered_set<Watch*> watchesNeedingUpdate;
   };
 
-  class SignalHandler : public IoHandler {
+  class SignalHandler final: public IoHandler {
   public:
     SignalHandler(Epoller* epoller);
     ~SignalHandler();
@@ -106,7 +106,7 @@ private:
     Promise<ProcessExitCode> onProcessExit(pid_t pid);
 
     // implements IoHandler --------------------------------------------------------------
-    void handle(uint32_t events);
+    void handle(uint32_t events) override;
 
   private:
     class ProcessExitHandler;
@@ -119,7 +119,7 @@ private:
     void maybeStopExpecting();
   };
 
-  class InotifyHandler : public IoHandler {
+  class InotifyHandler final: public IoHandler {
   public:
     InotifyHandler(Epoller* epoller);
     ~InotifyHandler();
@@ -127,7 +127,7 @@ private:
     OwnedPtr<FileWatcher> watchFile(const std::string& filename);
 
     // implements IoHandler --------------------------------------------------------------
-    void handle(uint32_t events);
+    void handle(uint32_t events) override;
 
   private:
     class WatchedDirectory;

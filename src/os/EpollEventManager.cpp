@@ -395,7 +395,7 @@ Promise<ProcessExitCode> EpollEventManager::onProcessExit(pid_t pid) {
 
 // =======================================================================================
 
-class EpollEventManager::IoWatcherImpl: public IoWatcher, public IoHandler {
+class EpollEventManager::IoWatcherImpl final: public IoWatcher, public IoHandler {
 public:
   IoWatcherImpl(Epoller* epoller, int fd)
       : watch(epoller, fd, 0, this),
@@ -412,14 +412,14 @@ public:
 
   // implements IoWatcher --------------------------------------------------------------
 
-  Promise<void> onReadable() {
+  Promise<void> onReadable() override {
     if (readFulfiller != nullptr) {
       throw std::logic_error("Already waiting for readability on this fd.");
     }
     return newPromise<Fulfiller>(&watch, EPOLLIN, &readFulfiller);
   }
 
-  Promise<void> onWritable() {
+  Promise<void> onWritable() override {
     if (readFulfiller != nullptr) {
       throw std::logic_error("Already waiting for writability on this fd.");
     }
@@ -427,7 +427,7 @@ public:
   }
 
   // implements IoHandler --------------------------------------------------------------
-  void handle(uint32_t events) {
+  void handle(uint32_t events) override {
     if (events & (EPOLLIN | EPOLLERR | EPOLLHUP)) {
       if (readFulfiller != nullptr) {
         readFulfiller->ready();
@@ -579,7 +579,7 @@ private:
   }
 };
 
-class EpollEventManager::InotifyHandler::FileWatcherImpl: public FileWatcher {
+class EpollEventManager::InotifyHandler::FileWatcherImpl final: public FileWatcher {
 public:
   FileWatcherImpl(InotifyHandler* inotifyHandler, const std::string& filename)
       : watchedDirectory(nullptr), modified(false), deleted(false), fulfiller(nullptr) {
@@ -633,7 +633,7 @@ public:
   }
 
   // implements FileWatcher --------------------------------------------------------------
-  Promise<FileChangeType> onChange() {
+  Promise<FileChangeType> onChange() override {
     if (fulfiller != nullptr) {
       fulfiller->abandon();
     }

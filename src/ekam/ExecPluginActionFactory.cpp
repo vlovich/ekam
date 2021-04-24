@@ -45,7 +45,7 @@ std::string splitToken(std::string* line) {
 
 // =======================================================================================
 
-class PluginDerivedActionFactory : public ActionFactory {
+class PluginDerivedActionFactory final : public ActionFactory {
 public:
   PluginDerivedActionFactory(OwnedPtr<File> executable,
                              std::string&& verb,
@@ -54,8 +54,8 @@ public:
   ~PluginDerivedActionFactory();
 
   // implements ActionFactory -----------------------------------------------------------
-  void enumerateTriggerTags(std::back_insert_iterator<std::vector<Tag> > iter);
-  OwnedPtr<Action> tryMakeAction(const Tag& id, File* file);
+  void enumerateTriggerTags(std::back_insert_iterator<std::vector<Tag> > iter) override;
+  OwnedPtr<Action> tryMakeAction(const Tag& id, File* file) override;
 
 private:
   OwnedPtr<File> executable;
@@ -66,7 +66,7 @@ private:
 
 // =======================================================================================
 
-class PluginDerivedAction : public Action {
+class PluginDerivedAction final : public Action {
 public:
   PluginDerivedAction(File* executable, const std::string& verb, bool silent, File* file)
       : executable(executable->clone()), verb(verb), silent(silent) {
@@ -77,9 +77,9 @@ public:
   ~PluginDerivedAction() {}
 
   // implements Action -------------------------------------------------------------------
-  std::string getVerb() { return verb; }
-  bool isSilent() { return silent; }
-  Promise<void> start(EventManager* eventManager, BuildContext* context);
+  std::string getVerb() override { return verb; }
+  bool isSilent() override { return silent; }
+  Promise<void> start(EventManager* eventManager, BuildContext* context) override;
 
 private:
   class CommandReader;

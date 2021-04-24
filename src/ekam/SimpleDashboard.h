@@ -23,13 +23,13 @@
 
 namespace ekam {
 
-class SimpleDashboard : public Dashboard {
+class SimpleDashboard final : public Dashboard {
 public:
   SimpleDashboard(FILE* outputStream);
   ~SimpleDashboard();
 
   // implements Dashboard ----------------------------------------------------------------
-  OwnedPtr<Task> beginTask(const std::string& verb, const std::string& noun, Silence silence);
+  OwnedPtr<Task> beginTask(const std::string& verb, const std::string& noun, Silence silence) override;
 
 private:
   class TaskImpl;

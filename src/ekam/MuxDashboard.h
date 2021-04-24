@@ -23,7 +23,7 @@
 
 namespace ekam {
 
-class MuxDashboard : public Dashboard {
+class MuxDashboard final : public Dashboard {
 public:
   MuxDashboard();
   ~MuxDashboard();
@@ -39,7 +39,7 @@ public:
   };
 
   // implements Dashboard ----------------------------------------------------------------
-  OwnedPtr<Task> beginTask(const std::string& verb, const std::string& noun, Silence silence);
+  OwnedPtr<Task> beginTask(const std::string& verb, const std::string& noun, Silence silence) override;
 
 private:
   class TaskImpl;

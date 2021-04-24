@@ -27,7 +27,7 @@
 
 namespace ekam {
 
-class ProtoDashboard : public Dashboard {
+class ProtoDashboard final : public Dashboard {
 public:
   ProtoDashboard(EventManager* eventManager, OwnedPtr<ByteStream> stream);
   ~ProtoDashboard();
@@ -35,7 +35,7 @@ public:
   Promise<void> onDisconnect();
 
   // implements Dashboard ----------------------------------------------------------------
-  OwnedPtr<Task> beginTask(const std::string& verb, const std::string& noun, Silence silence);
+  OwnedPtr<Task> beginTask(const std::string& verb, const std::string& noun, Silence silence) override;
 
 private:
   class TaskImpl;

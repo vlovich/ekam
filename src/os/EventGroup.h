@@ -28,7 +28,7 @@ namespace ekam {
 // thrown by callbacks are caught and reported.
 //
 // TODO:  Better name?
-class EventGroup: public EventManager {
+class EventGroup final: public EventManager {
 public:
   class ExceptionHandler {
   public:
@@ -48,12 +48,12 @@ public:
   ~EventGroup();
 
   // implements Executor -----------------------------------------------------------------
-  OwnedPtr<PendingRunnable> runLater(OwnedPtr<Runnable> runnable);
+  OwnedPtr<PendingRunnable> runLater(OwnedPtr<Runnable> runnable) override;
 
   // implements EventManager -------------------------------------------------------------
-  Promise<ProcessExitCode> onProcessExit(pid_t pid);
-  OwnedPtr<IoWatcher> watchFd(int fd);
-  OwnedPtr<FileWatcher> watchFile(const std::string& filename);
+  Promise<ProcessExitCode> onProcessExit(pid_t pid) override;
+  OwnedPtr<IoWatcher> watchFd(int fd) override;
+  OwnedPtr<FileWatcher> watchFile(const std::string& filename) override;
 
 private:
   class PendingEvent;

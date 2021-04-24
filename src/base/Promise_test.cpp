@@ -22,7 +22,7 @@
 namespace ekam {
 namespace {
 
-class MockExecutor: public Executor {
+class MockExecutor final: public Executor {
 private:
   class PendingRunnableImpl : public PendingRunnable {
   public:
@@ -67,7 +67,7 @@ public:
   }
 
   // implements Executor -----------------------------------------------------------------
-  OwnedPtr<PendingRunnable> runLater(OwnedPtr<Runnable> runnable) {
+  OwnedPtr<PendingRunnable> runLater(OwnedPtr<Runnable> runnable) override {
     auto result = newOwned<PendingRunnableImpl>(this, runnable.release());
     queue.push_back(result.get());
     return result.release();
